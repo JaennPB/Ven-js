@@ -1,0 +1,28 @@
+{
+  "productosInfo": {
+    "producto1": {
+      "precio": 5,
+      "bombaSegundos": 5
+    },
+    "producto2": {
+      "precio": 5,
+      "bombaSegundos": 5
+    },
+    "producto3": {
+      "precio": 5,
+      "bombaSegundos": 5
+    },
+    "producto4": {
+      "precio": 5,
+      "bombaSegundos": 5
+    },
+    "producto5": {
+      "precio": 5,
+      "bombaSegundos": 5
+    },
+    "producto6": {
+      "precio": 5,
+      "bombaSegundos": 5
+    }
+  }
+}
