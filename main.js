@@ -1,9 +1,12 @@
 // ========================================================================================
 // ========================================================================  module imports
 
-const Gpio = require('onoff').Gpio;
+const pigpio = require('pigpio');
+const Gpio = pigpio.Gpio;
 const fs = require('fs');
 const shell = require('shelljs');
+
+pigpio.initialize();
 
 // ---------------------------------------------
 // --------------------------------- own modules
@@ -15,55 +18,97 @@ const menuModule = require('./menuModule');
 // ========================================================================================
 // =================================================================================== gpio
 
-let buttonMinus;
-let buttonPlus;
-let buttonUp;
-let buttonSave;
+const buttonOptions = {};
 
-let bombaBtn1;
-let bombaBtn2;
-let bombaBtn3;
-let bombaBtn4;
-let bombaBtn5;
-let bombaBtn6;
+const buttonMinus = new Gpio(22, {
+  mode: Gpio.INPUT,
+  edge: Gpio.RISING_EDGE,
+  alert: true,
+});
+const buttonPlus = new Gpio(27, {
+  mode: Gpio.INPUT,
+  edge: Gpio.RISING_EDGE,
+  alert: true,
+});
+const buttonUp = new Gpio(17, {
+  mode: Gpio.INPUT,
+  edge: Gpio.RISING_EDGE,
+  alert: true,
+});
+const buttonSave = new Gpio(4, {
+  mode: Gpio.INPUT,
+  edge: Gpio.RISING_EDGE,
+  alert: true,
+});
 
-let coinAcceptor;
+const bombaBtn1 = new Gpio(14, {
+  mode: Gpio.INPUT,
+  edge: Gpio.RISING_EDGE,
+  alert: true,
+});
+const bombaBtn2 = new Gpio(15, {
+  mode: Gpio.INPUT,
+  edge: Gpio.RISING_EDGE,
+  alert: true,
+});
+const bombaBtn3 = new Gpio(18, {
+  mode: Gpio.INPUT,
+  edge: Gpio.RISING_EDGE,
+  alert: true,
+});
+const bombaBtn4 = new Gpio(23, {
+  mode: Gpio.INPUT,
+  edge: Gpio.RISING_EDGE,
+  alert: true,
+});
+const bombaBtn5 = new Gpio(24, {
+  mode: Gpio.INPUT,
+  edge: Gpio.RISING_EDGE,
+  alert: true,
+});
+const bombaBtn6 = new Gpio(25, {
+  mode: Gpio.INPUT,
+  edge: Gpio.RISING_EDGE,
+  alert: true,
+});
 
-const exportAll = () => {
-  buttonMinus = new Gpio(22, 'in', 'rising', { debounceTimeout: 10 });
-  buttonPlus = new Gpio(27, 'in', 'rising', { debounceTimeout: 10 });
-  buttonUp = new Gpio(17, 'in', 'rising', { debounceTimeout: 10 });
-  buttonSave = new Gpio(4, 'in', 'rising', { debounceTimeout: 10 });
+const coinAcceptor = new Gpio(20, {
+  mode: Gpio.INPUT,
+  edge: Gpio.FALLING_EDGE,
+  alert: true,
+});
 
-  bombaBtn1 = new Gpio(14, 'in', 'rising');
-  bombaBtn2 = new Gpio(15, 'in', 'rising');
-  bombaBtn3 = new Gpio(18, 'in', 'rising');
-  bombaBtn4 = new Gpio(23, 'in', 'rising');
-  bombaBtn5 = new Gpio(24, 'in', 'rising');
-  bombaBtn6 = new Gpio(25, 'in', 'rising');
+buttonMinus.glitchFilter(10000);
+buttonPlus.glitchFilter(10000);
+buttonUp.glitchFilter(10000);
+buttonSave.glitchFilter(10000);
 
-  coinAcceptor = new Gpio(20, 'in', 'falling', { debounceTimeout: 50 });
-};
+bombaBtn1.glitchFilter(10000);
+bombaBtn2.glitchFilter(10000);
+bombaBtn3.glitchFilter(10000);
+bombaBtn4.glitchFilter(10000);
+bombaBtn5.glitchFilter(10000);
+bombaBtn6.glitchFilter(10000);
 
-exportAll();
+coinAcceptor.glitchFilter(10000);
 
 // ========================================================================================
 // =============================================================================== shutdown
 
-const unexportAll = () => {
-  bombaBtn1.unexport();
-  bombaBtn2.unexport();
-  bombaBtn3.unexport();
-  bombaBtn4.unexport();
-  bombaBtn5.unexport();
-  bombaBtn6.unexport();
+const disableAll = () => {
+  bombaBtn1.disableAlert();
+  bombaBtn2.disableAlert();
+  bombaBtn3.disableAlert();
+  bombaBtn4.disableAlert();
+  bombaBtn5.disableAlert();
+  bombaBtn6.disableAlert();
 
-  buttonMinus.unexport();
-  buttonPlus.unexport();
-  buttonUp.unexport();
-  buttonSave.unexport();
+  buttonMinus.disableAlert();
+  buttonPlus.disableAlert();
+  buttonUp.disableAlert();
+  buttonSave.disableAlert();
 
-  coinAcceptor.unexport();
+  coinAcceptor.disableAlert();
 };
 
 // ========================================================================================
@@ -178,10 +223,11 @@ const pumpHandler = (producto) => {
   const segundos = dataObject.productosInfo[producto].bombaSegundos * 1000;
 
   if (credit >= precio) {
-    unexportAll();
+    disableAll();
     writeToLCD('Cargando', 'Producto...');
     pumpsModule.startPump(producto, segundos);
     setTimeout(() => {
+      pigpio.terminate();
       shell.exec('node main.js');
       process.exit(0);
     }, segundos);
@@ -207,14 +253,15 @@ const openConfigMenu = () => {
 
 const saveData = () => {
   editing = false;
-  unexportAll();
+  disableAll();
   const dataToWrite = JSON.stringify(menuModule.dataFile, null, 2);
   writeToLCD('Guardando', 'Datos...');
   fs.writeFileSync('./productosData.json', '');
   fs.writeFileSync('./productosData.json', dataToWrite);
   writeToLCD('Datos', 'Guardados!');
   setTimeout(() => {
-    shell.exec('node main.js');
+    pigpio.terminate();
+    shell.exec('sudo node main.js');
     process.exit(0);
   }, 500);
 };
@@ -225,74 +272,49 @@ const saveData = () => {
 // -----------------------------------
 // ---------------------- pump buttons
 
-bombaBtn1.watch((err, value) => {
-  if (err) {
-    console.log('There was an error', err);
-    return;
-  }
-
-  console.log('p1', value);
-  if (value === 1) {
+bombaBtn1.on('alert', (level) => {
+  console.log('p1', level);
+  if (level === 1) {
     pumpHandler('producto1');
   }
   return;
 });
 
-bombaBtn2.watch((err, value) => {
-  if (err) {
-    console.log('There was an error', err);
-    return;
-  }
-  console.log('p2', value);
-  if (value === 1) {
+bombaBtn2.on('alert', (level) => {
+  console.log('p2', level);
+  if (level === 1) {
     pumpHandler('producto2');
   }
   return;
 });
 
-bombaBtn3.watch((err, value) => {
-  if (err) {
-    console.log('There was an error', err);
-    return;
-  }
-  console.log('p3', value);
-  if (value === 1) {
+bombaBtn3.on('alert', (level) => {
+  console.log('p3', level);
+  if (level === 1) {
     pumpHandler('producto3');
   }
   return;
 });
 
-bombaBtn4.watch((err, value) => {
-  if (err) {
-    console.log('There was an error', err);
-    return;
-  }
-  console.log('p4', value);
-  if (value === 1) {
+bombaBtn4.on('alert', (level) => {
+  console.log('p4', level);
+  if (level === 1) {
     pumpHandler('producto4');
   }
   return;
 });
 
-bombaBtn5.watch((err, value) => {
-  if (err) {
-    console.log('There was an error', err);
-    return;
-  }
-  console.log('p5', value);
-  if (value === 1) {
+bombaBtn5.on('alert', (level) => {
+  console.log('p5', level);
+  if (level === 1) {
     pumpHandler('producto5');
   }
   return;
 });
 
-bombaBtn6.watch((err, value) => {
-  if (err) {
-    console.log('There was an error', err);
-    return;
-  }
-  console.log('p6', value);
-  if (value === 1) {
+bombaBtn6.on('alert', (level) => {
+  console.log('p6', level);
+  if (level === 1) {
     pumpHandler('producto6');
   }
   return;
@@ -301,13 +323,8 @@ bombaBtn6.watch((err, value) => {
 // -----------------------------------
 // --------------------- coin acceptor
 
-coinAcceptor.watch((err, value) => {
-  if (err) {
-    console.log('There was an error', err);
-    return;
-  }
-
-  if (value === 0) {
+coinAcceptor.on('alert', (level) => {
+  if (level === 0) {
     impulses++;
     console.log('Impulses:', impulses);
 
@@ -322,56 +339,36 @@ coinAcceptor.watch((err, value) => {
 // -----------------------------------
 // ---------------------- menu buttons
 
-buttonMinus.watch((err, value) => {
-  if (err) {
-    console.error('There was an error', err);
-    return;
-  }
-
-  console.log(value);
-  if (value === 1 && !editing) {
+buttonMinus.on('alert', (level) => {
+  console.log(level);
+  if (level === 1 && !editing) {
     openConfigMenu();
     console.log('opening menu');
-  } else if (value === 1 && editing) {
+  } else if (level === 1 && editing) {
     console.log('editing');
     menuModule.inputAction('minus');
   }
 });
 
-buttonPlus.watch((err, value) => {
-  if (err) {
-    console.error('There was an error', err);
-    return;
-  }
-
-  console.log(value);
-  if (value === 1 && editing) {
+buttonPlus.on('alert', (level) => {
+  console.log(level);
+  if (level === 1 && editing) {
     console.log('editing');
     menuModule.inputAction('plus');
   }
 });
 
-buttonUp.watch((err, value) => {
-  if (err) {
-    console.error('There was an error', err);
-    return;
-  }
-
-  console.log(value);
-  if (value === 1 && editing) {
+buttonUp.on('alert', (level) => {
+  console.log(level);
+  if (level === 1 && editing) {
     console.log('editing');
     menuModule.inputAction('up');
   }
 });
 
-buttonSave.watch((err, value) => {
-  if (err) {
-    console.error('There was an error', err);
-    return;
-  }
-
-  console.log(value);
-  if (value === 1 && editing) {
+buttonSave.on('alert', (level) => {
+  console.log(level);
+  if (level === 1 && editing) {
     console.log('saving');
     menuModule.inputAction('reset');
     saveData();
@@ -382,5 +379,6 @@ buttonSave.watch((err, value) => {
 // ================================================================================ on exit
 
 process.on('SIGINT', () => {
-  unexportAll();
+  pigpio.terminate();
+  process.exit(0);
 });
