@@ -188,6 +188,8 @@ const pumpHandler = (producto) => {
 
 let editing = false;
 let m = 0;
+let off = 0;
+let isTurningOff = false;
 
 const openConfigMenu = () => {
   m++;
@@ -213,6 +215,17 @@ const saveData = () => {
   }, 100);
 };
 
+const turnOff = () => {
+  off++;
+  if (off === 3) {
+    writeToLCD('Apagando, espere', `15 segundos`);
+    isTurningOff = true;
+    setTimeout(() => {
+      pigpio.terminate();
+      process.exit();
+    }, 50);
+  }
+};
 // ========================================================================================
 // ============================================================================== listeners
 
@@ -314,6 +327,10 @@ buttonUp.on('alert', (level) => {
 
 buttonSave.on('alert', (level) => {
   console.log(level);
+  if (level === 1 && !editing) {
+    turnOff();
+    console.log('apagando');
+  }
   if (level === 1 && editing) {
     console.log('saving');
     menuModule.inputAction('reset');
@@ -330,6 +347,11 @@ process.on('SIGINT', () => {
 });
 
 process.on('exit', (code) => {
+  if (isTurningOff) {
+    console.log('Shutting down...');
+    shell.exec('sudo shutdown -h now');
+  }
+
   console.log('Exiting: ', code);
   console.log('Starting...');
   shell.exec('sudo node main.js');
