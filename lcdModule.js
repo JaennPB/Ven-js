@@ -13,11 +13,6 @@ const lcd = new LCD(1, 0x27, 16, 2);
 
 lcd.beginSync();
 
-exports.beginLCD = () => {
-  lcd.beginSync();
-  return;
-};
-
 exports.clearLCD = () => {
   lcd.clearSync();
   return;
@@ -25,10 +20,5 @@ exports.clearLCD = () => {
 
 exports.printLCD = (line, text) => {
   lcd.printLineSync(line, text);
-  return;
-};
-
-exports.turnOffLCD = () => {
-  lcd.noDisplay();
   return;
 };

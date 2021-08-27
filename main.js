@@ -7,7 +7,6 @@ const fs = require('fs');
 const shell = require('shelljs');
 
 pigpio.initialize();
-
 // ---------------------------------------------
 // --------------------------------- own modules
 
@@ -18,79 +17,37 @@ const menuModule = require('./menuModule');
 // ========================================================================================
 // =================================================================================== gpio
 
-const buttonOptions = {};
+const buttonOptions = { mode: Gpio.INPUT, edge: Gpio.RISING_EDGE, alert: true };
+const coinOptions = { mode: Gpio.INPUT, edge: Gpio.FALLING_EDGE, alert: true };
+const ms = 10000;
 
-const buttonMinus = new Gpio(22, {
-  mode: Gpio.INPUT,
-  edge: Gpio.RISING_EDGE,
-  alert: true,
-});
-const buttonPlus = new Gpio(27, {
-  mode: Gpio.INPUT,
-  edge: Gpio.RISING_EDGE,
-  alert: true,
-});
-const buttonUp = new Gpio(17, {
-  mode: Gpio.INPUT,
-  edge: Gpio.RISING_EDGE,
-  alert: true,
-});
-const buttonSave = new Gpio(4, {
-  mode: Gpio.INPUT,
-  edge: Gpio.RISING_EDGE,
-  alert: true,
-});
+const buttonMinus = new Gpio(22, buttonOptions);
+const buttonPlus = new Gpio(27, buttonOptions);
+const buttonUp = new Gpio(17, buttonOptions);
+const buttonSave = new Gpio(4, buttonOptions);
 
-const bombaBtn1 = new Gpio(14, {
-  mode: Gpio.INPUT,
-  edge: Gpio.RISING_EDGE,
-  alert: true,
-});
-const bombaBtn2 = new Gpio(15, {
-  mode: Gpio.INPUT,
-  edge: Gpio.RISING_EDGE,
-  alert: true,
-});
-const bombaBtn3 = new Gpio(18, {
-  mode: Gpio.INPUT,
-  edge: Gpio.RISING_EDGE,
-  alert: true,
-});
-const bombaBtn4 = new Gpio(23, {
-  mode: Gpio.INPUT,
-  edge: Gpio.RISING_EDGE,
-  alert: true,
-});
-const bombaBtn5 = new Gpio(24, {
-  mode: Gpio.INPUT,
-  edge: Gpio.RISING_EDGE,
-  alert: true,
-});
-const bombaBtn6 = new Gpio(25, {
-  mode: Gpio.INPUT,
-  edge: Gpio.RISING_EDGE,
-  alert: true,
-});
+const bombaBtn1 = new Gpio(14, buttonOptions);
+const bombaBtn2 = new Gpio(15, buttonOptions);
+const bombaBtn3 = new Gpio(18, buttonOptions);
+const bombaBtn4 = new Gpio(23, buttonOptions);
+const bombaBtn5 = new Gpio(24, buttonOptions);
+const bombaBtn6 = new Gpio(25, buttonOptions);
 
-const coinAcceptor = new Gpio(20, {
-  mode: Gpio.INPUT,
-  edge: Gpio.FALLING_EDGE,
-  alert: true,
-});
+const coinAcceptor = new Gpio(20, coinOptions);
 
-buttonMinus.glitchFilter(10000);
-buttonPlus.glitchFilter(10000);
-buttonUp.glitchFilter(10000);
-buttonSave.glitchFilter(10000);
+buttonMinus.glitchFilter(ms);
+buttonPlus.glitchFilter(ms);
+buttonUp.glitchFilter(ms);
+buttonSave.glitchFilter(ms);
 
-bombaBtn1.glitchFilter(10000);
-bombaBtn2.glitchFilter(10000);
-bombaBtn3.glitchFilter(10000);
-bombaBtn4.glitchFilter(10000);
-bombaBtn5.glitchFilter(10000);
-bombaBtn6.glitchFilter(10000);
+bombaBtn1.glitchFilter(ms);
+bombaBtn2.glitchFilter(ms);
+bombaBtn3.glitchFilter(ms);
+bombaBtn4.glitchFilter(ms);
+bombaBtn5.glitchFilter(ms);
+bombaBtn6.glitchFilter(ms);
 
-coinAcceptor.glitchFilter(10000);
+coinAcceptor.glitchFilter(ms);
 
 // ========================================================================================
 // =============================================================================== shutdown
@@ -128,9 +85,11 @@ readData();
 // ==================================================================== LCD helper function
 
 const writeToLCD = (message1, message2) => {
-  lcdModule.clearLCD();
-  lcdModule.printLCD(0, message1);
-  lcdModule.printLCD(1, message2);
+  setTimeout(() => {
+    lcdModule.clearLCD();
+    lcdModule.printLCD(0, message1);
+    lcdModule.printLCD(1, message2);
+  }, 50);
   return;
 };
 
@@ -147,7 +106,7 @@ let loop;
 const startLoop = () => {
   loop = setInterval(() => {
     i++;
-    console.log('i:', i);
+    console.log('i: ', i);
 
     if (i > 3) {
       stopLoop();
@@ -162,14 +121,11 @@ const startLoop = () => {
       impulses = 0;
       i = 0;
       credit = credit + 1;
-      setTimeout(() => {
-        writeToLCD(
-          'Su credito:',
-          `$${credit} ${credit === 1 ? 'peso' : 'pesos'}`
-        );
-        // console.log('tu credito: ', credit);
-        return;
-      }, 50);
+      console.log('Your credit: ', credit);
+      writeToLCD(
+        'Su credito:',
+        `$${credit} ${credit === 1 ? 'peso' : 'pesos'}`
+      );
     }
 
     if (impulses === 3 && i === 3) {
@@ -177,11 +133,8 @@ const startLoop = () => {
       impulses = 0;
       i = 0;
       credit = credit + 2;
-      setTimeout(() => {
-        writeToLCD('Su credito:', `$${credit} pesos`);
-        // console.log('tu credito: ', credit);
-        return;
-      }, 50);
+      console.log('Your credit: ', credit);
+      writeToLCD('Su credito:', `$${credit} pesos`);
     }
 
     if (impulses === 4 && i === 3) {
@@ -189,11 +142,8 @@ const startLoop = () => {
       impulses = 0;
       i = 0;
       credit = credit + 5;
-      setTimeout(() => {
-        writeToLCD('Su credito', `$${credit} pesos`);
-        // console.log('tu credito: ', credit);
-        return;
-      }, 50);
+      console.log('Your credit: ', credit);
+      writeToLCD('Su credito', `$${credit} pesos`);
     }
 
     if (impulses === 5 && i === 3) {
@@ -201,11 +151,8 @@ const startLoop = () => {
       impulses = 0;
       i = 0;
       credit = credit + 10;
-      setTimeout(() => {
-        writeToLCD('Su credito', `$${credit} pesos`);
-        // console.log('tu credito: ', credit);
-        return;
-      }, 50);
+      console.log('Your credit: ', credit);
+      writeToLCD('Su credito', `$${credit} pesos`);
     }
   }, 200);
 };
@@ -226,10 +173,10 @@ const pumpHandler = (producto) => {
     disableAll();
     writeToLCD('Cargando', 'Producto...');
     pumpsModule.startPump(producto, segundos);
+
     setTimeout(() => {
       pigpio.terminate();
-      shell.exec('node main.js');
-      process.exit(0);
+      process.exit();
     }, segundos);
   }
 
@@ -252,18 +199,18 @@ const openConfigMenu = () => {
 };
 
 const saveData = () => {
-  editing = false;
   disableAll();
+  editing = false;
   const dataToWrite = JSON.stringify(menuModule.dataFile, null, 2);
-  writeToLCD('Guardando', 'Datos...');
+
   fs.writeFileSync('./productosData.json', '');
   fs.writeFileSync('./productosData.json', dataToWrite);
-  writeToLCD('Datos', 'Guardados!');
+  writeToLCD('Guardando...', 'Espere');
+
   setTimeout(() => {
     pigpio.terminate();
-    shell.exec('sudo node main.js');
-    process.exit(0);
-  }, 500);
+    process.exit();
+  }, 100);
 };
 
 // ========================================================================================
@@ -328,12 +275,11 @@ coinAcceptor.on('alert', (level) => {
     impulses++;
     console.log('Impulses:', impulses);
 
-    if (impulses === 1) {
-      setTimeout(() => {
-        startLoop();
-      }, 500);
+    if (impulses === 2) {
+      startLoop();
     }
   }
+  return;
 });
 
 // -----------------------------------
@@ -380,5 +326,11 @@ buttonSave.on('alert', (level) => {
 
 process.on('SIGINT', () => {
   pigpio.terminate();
-  process.exit(0);
+  process.exit();
+});
+
+process.on('exit', (code) => {
+  console.log('Exiting: ', code);
+  console.log('Starting...');
+  shell.exec('sudo node main.js');
 });
