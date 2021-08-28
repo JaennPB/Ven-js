@@ -108,7 +108,7 @@ const startLoop = () => {
     i++;
     console.log('i: ', i);
 
-    if (i > 3) {
+    if (i > 5) {
       stopLoop();
       i = 0;
       impulses = 0;
@@ -116,7 +116,7 @@ const startLoop = () => {
       writeToLCD('Error con moneda', 'Inserte de nuevo');
     }
 
-    if (impulses === 2 && i === 3) {
+    if ((impulses === 2 || impulses === 3) && i === 5) {
       stopLoop();
       impulses = 0;
       i = 0;
@@ -128,7 +128,7 @@ const startLoop = () => {
       );
     }
 
-    if (impulses === 3 && i === 3) {
+    if ((impulses === 4 || impulses === 5) && i === 5) {
       stopLoop();
       impulses = 0;
       i = 0;
@@ -137,7 +137,7 @@ const startLoop = () => {
       writeToLCD('Su credito:', `$${credit} pesos`);
     }
 
-    if (impulses === 4 && i === 3) {
+    if ((impulses === 6 || impulses === 7) && i === 5) {
       stopLoop();
       impulses = 0;
       i = 0;
@@ -146,7 +146,7 @@ const startLoop = () => {
       writeToLCD('Su credito', `$${credit} pesos`);
     }
 
-    if (impulses === 5 && i === 3) {
+    if ((impulses === 8 || impulses === 9) && i === 5) {
       stopLoop();
       impulses = 0;
       i = 0;
@@ -187,9 +187,12 @@ const pumpHandler = (producto) => {
 // ======================================================================== menu controller
 
 let editing = false;
+let isTurningOff = false;
+let manuallyExiting = false;
+
 let m = 0;
 let off = 0;
-let isTurningOff = false;
+let program = 0;
 
 const openConfigMenu = () => {
   m++;
@@ -223,9 +226,21 @@ const turnOff = () => {
     setTimeout(() => {
       pigpio.terminate();
       process.exit();
-    }, 50);
+    }, 200);
   }
 };
+
+const exitProgram = () => {
+  program++;
+  if (program === 10) {
+    manuallyExiting = true;
+    setTimeout(() => {
+      pigpio.terminate();
+      process.exit();
+    }, 100);
+  }
+};
+
 // ========================================================================================
 // ============================================================================== listeners
 
@@ -288,8 +303,10 @@ coinAcceptor.on('alert', (level) => {
     impulses++;
     console.log('Impulses:', impulses);
 
-    if (impulses === 2) {
-      startLoop();
+    if (impulses === 3) {
+      setTimeout(() => {
+        startLoop();
+      }, 200);
     }
   }
   return;
@@ -319,7 +336,10 @@ buttonPlus.on('alert', (level) => {
 
 buttonUp.on('alert', (level) => {
   console.log(level);
-  if (level === 1 && editing) {
+  if (level === 1 && !editing) {
+    //exitProgram();
+    console.log('Exiting safely');
+  } else if (level === 1 && editing) {
     console.log('editing');
     menuModule.inputAction('up');
   }
@@ -330,8 +350,7 @@ buttonSave.on('alert', (level) => {
   if (level === 1 && !editing) {
     turnOff();
     console.log('apagando');
-  }
-  if (level === 1 && editing) {
+  } else if (level === 1 && editing) {
     console.log('saving');
     menuModule.inputAction('reset');
     saveData();
@@ -352,7 +371,9 @@ process.on('exit', (code) => {
     shell.exec('sudo shutdown -h now');
   }
 
-  console.log('Exiting: ', code);
-  console.log('Starting...');
-  shell.exec('sudo node main.js');
+  if (!manuallyExiting) {
+    console.log('Exiting: ', code);
+    console.log('Starting...');
+    shell.exec('sudo node main.js');
+  }
 });
