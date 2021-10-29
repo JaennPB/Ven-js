@@ -7,10 +7,18 @@ const fs = require('fs');
 const shell = require('shelljs');
 
 pigpio.initialize();
+
+// ---------------------------------------------
+// ----------------------------------------- lcd
+
+const LCD = require('raspberrypi-liquid-crystal');
+
+const lcd = new LCD(1, 0x27, 16, 2);
+lcd.beginSync();
+
 // ---------------------------------------------
 // --------------------------------- own modules
 
-const lcdModule = require('./lcdModule');
 const pumpsModule = require('./pumpsModule');
 const menuModule = require('./menuModule');
 
@@ -21,17 +29,17 @@ const buttonOptions = { mode: Gpio.INPUT, edge: Gpio.RISING_EDGE, alert: true };
 const coinOptions = { mode: Gpio.INPUT, edge: Gpio.FALLING_EDGE, alert: true };
 const ms = 10000;
 
-const buttonMinus = new Gpio(22, buttonOptions);
-const buttonPlus = new Gpio(27, buttonOptions);
-const buttonUp = new Gpio(17, buttonOptions);
-const buttonSave = new Gpio(4, buttonOptions);
+const buttonMinus = new Gpio(4, buttonOptions);
+const buttonPlus = new Gpio(17, buttonOptions);
+const buttonUp = new Gpio(27, buttonOptions);
+const buttonSave = new Gpio(22, buttonOptions);
 
-const bombaBtn1 = new Gpio(14, buttonOptions);
-const bombaBtn2 = new Gpio(15, buttonOptions);
-const bombaBtn3 = new Gpio(18, buttonOptions);
-const bombaBtn4 = new Gpio(23, buttonOptions);
-const bombaBtn5 = new Gpio(24, buttonOptions);
-const bombaBtn6 = new Gpio(25, buttonOptions);
+const bombaBtn1 = new Gpio(25, buttonOptions);
+const bombaBtn2 = new Gpio(24, buttonOptions);
+const bombaBtn3 = new Gpio(23, buttonOptions);
+const bombaBtn4 = new Gpio(18, buttonOptions);
+const bombaBtn5 = new Gpio(15, buttonOptions);
+const bombaBtn6 = new Gpio(14, buttonOptions);
 
 const coinAcceptor = new Gpio(20, coinOptions);
 
@@ -86,9 +94,9 @@ readData();
 
 const writeToLCD = (message1, message2) => {
   setTimeout(() => {
-    lcdModule.clearLCD();
-    lcdModule.printLCD(0, message1);
-    lcdModule.printLCD(1, message2);
+    lcd.clearSync();
+    lcd.printLineSync(0, message1);
+    lcd.printLineSync(1, message2);
   }, 50);
   return;
 };
@@ -165,19 +173,24 @@ const stopLoop = () => {
 // ========================================================================================
 // ================================================================= pump buttons controller
 
+let normalReset = false;
+
 const pumpHandler = (producto) => {
   const precio = dataObject.productosInfo[producto].precio;
   const segundos = dataObject.productosInfo[producto].bombaSegundos * 1000;
 
   if (credit >= precio) {
-    disableAll();
     writeToLCD('Cargando', 'Producto...');
-    pumpsModule.startPump(producto, segundos);
-
     setTimeout(() => {
-      pigpio.terminate();
-      process.exit();
-    }, segundos);
+      disableAll();
+      pumpsModule.startPump(producto, segundos);
+
+      setTimeout(() => {
+        normalReset = true;
+        pigpio.terminate();
+        process.exit();
+      }, segundos);
+    }, 250);
   }
 
   return;
@@ -213,6 +226,7 @@ const saveData = () => {
   writeToLCD('Guardando...', 'Espere');
 
   setTimeout(() => {
+    normalReset = true;
     pigpio.terminate();
     process.exit();
   }, 100);
@@ -232,7 +246,7 @@ const turnOff = () => {
 
 const exitProgram = () => {
   program++;
-  if (program === 10) {
+  if (program === 3) {
     manuallyExiting = true;
     setTimeout(() => {
       pigpio.terminate();
@@ -337,7 +351,8 @@ buttonPlus.on('alert', (level) => {
 buttonUp.on('alert', (level) => {
   console.log(level);
   if (level === 1 && !editing) {
-    //exitProgram();
+    // EXIT GARCEFULLY!!!! ENABLE WHEN IN DEVELOPMENT
+    exitProgram();
     console.log('Exiting safely');
   } else if (level === 1 && editing) {
     console.log('editing');
@@ -359,6 +374,7 @@ buttonSave.on('alert', (level) => {
 
 // ========================================================================================
 // ================================================================================ on exit
+let error = false;
 
 process.on('SIGINT', () => {
   pigpio.terminate();
@@ -366,14 +382,33 @@ process.on('SIGINT', () => {
 });
 
 process.on('exit', (code) => {
+  // turning off
   if (isTurningOff) {
     console.log('Shutting down...');
     shell.exec('sudo shutdown -h now');
   }
 
-  if (!manuallyExiting) {
+  // normal reset after pumping or saving
+  if (normalReset) {
     console.log('Exiting: ', code);
     console.log('Starting...');
     shell.exec('sudo node main.js');
   }
+
+  // exit if in development (must be enabled)
+  if (manuallyExiting) {
+    pigpio.terminate();
+    process.exit();
+  }
+
+  // exit if error
+  if (error || (error && normalReset)) {
+    console.log('ERROR... RESTARTING ', code);
+    shell.exec('sudo reboot');
+  }
+});
+
+process.on('uncaughtException', (error) => {
+  console.log('Error: ', error);
+  process.exit();
 });
