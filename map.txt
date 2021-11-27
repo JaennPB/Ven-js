@@ -1,0 +1,20 @@
+bombaBtn1 = 14
+bombaBtn2 = 15
+bombaBtn3 = 18
+bombaBtn4 = 23
+bombaBtn5 = 24
+bombaBtn6 = 25
+
+buttonMinus = 4
+buttonPlus = 17
+buttonUp = 27
+buttonSave = 22
+
+coinAcceptor = 20
+
+bomba1 = 26
+bomba2 = 19
+bomba3 = 13
+bomba4 = 6
+bomba5 = 5
+bomba6 = 11
